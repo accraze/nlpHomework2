@@ -21,8 +21,9 @@ class hmm:
         sent = []
         for word in o.split():
             sent.append(word)
-        print sent
+        # print sent
         total = 0
+        count = 0
         selected_states = []
         
         #load list... 17 HIDDEN STATES
@@ -45,71 +46,111 @@ class hmm:
         selected_states.append(self.states[44])
         selected_states.append(self.states[45])
 
-        mle = {}
-        count = 0
-        
-        
-        for item in sent:
-            for state in selected_states:
+       #  permutations = list(itertools.permutations(selected_states))
+
+       # for item in permutations:
+       #      for item in sent:
+       #          temp self.emissions[]
+
+        # for item in sent:
+        #     for state in selected_states:
                 
-                temp = self.emissions[state].prob(item) * self.priors.prob(state)
+        #         temp = self.emissions[state].prob(item) * self.priors.prob(state)
     
-                if temp > total:
-                    total = temp
-                    mle.update({item:state})
-                count+=1
-        count = 0
-        total = 0
-        print mle
+        #         if temp > total:
+        #             total = temp
+        #             mle.update({item:state})
+        #         count+=1
+        # count = 0
+        # total = 0
+        # print mle
+
+
+    def decode(self, symbols):
+        # VITERBI DECODING
+        T = len(symbols)
+        N = len(self.states)
+        V = zeros((T, N), float32)
+        B = {}
+
+        for t in range(T):
+            symbol = symbols[t]
+            if t == 0:
+                for i in range(N):
+                    state = self.states[i]
+                    V[t, i] = self.priors.prob(state) * \
+                              self.emissions[state].prob(symbol)
+                    B[t, state] = None
+            else:
+                for j in range(N):
+                    sj = self.states[j]
+                    best = None
+                    for i in range(N):
+                        si = self.states[i]
+                        va = V[t-1, i] * self.transitions[si].prob(sj)
+                        if not best or va > best[0]:
+                            best = (va, si)
+                    V[t, j] = best[0] * self.emissions[sj].prob(symbol)
+                    B[t, sj] = best[1]
+
+        #print 'V', V
+        #print 'B', B
+
+        best = None
+        for i in range(N):
+            val = V[T-1, i]
+            if not best or val > best[0]:
+                best = (val, self.states[i])
+
+        #print 'best', best
+
+        current = best[1]
+        sequence = [current]
+        for t in range(T-1, 0, -1):
+            last = B[t, current]
+            sequence.append(last)
+            current = last
+
+        sequence.reverse()
+        return sequence
+
+    def tagViterbi(self, fname):
+        content = []
+        tagged_content = []
+        with open(fname) as f:
+            content = f.readlines()
+
+        for line in content:
+            print line
+            # decode the line using viterbi decoding
+            best_sequence = self.decode(line)
+            count = 0
+            for word in line :
+                word += ("/" + best_sequence[count])
+                count += 1
+
+        for line in content:
+            print line
+
+
+        
 
 
             
 
 
 
-    # def decode(self, sequence):
-    #     sent = sequence.split()
-    #     print viterbi_parser = nltk.viterbi_parser
-    # def tagViterbi (self,sentence):
-    #     #Return the best path, given an HMM model and a sequence of observations"""
-    #     # A - initialise stuff
-    #     nSamples = len(observations[0])
-    #     nStates = self.transition.shape[0] # number of states
-    #     c = np.zeros(nSamples) #scale factors (necessary to prevent underflow)
-    #     viterbi = np.zeros((nStates,nSamples)) # initialise viterbi table
-    #     psi = np.zeros((nStates,nSamples)) # initialise the best path table
-    #     best_path = np.zeros(nSamples); # this will be your output
 
-    #     # B- appoint initial values for viterbi and best path (bp) tables - Eq (32a-32b)
-    #     viterbi[:,0] = self.priors.T * self.emission[:,observations(0)]
-    #     c[0] = 1.0/np.sum(viterbi[:,0])
-    #     viterbi[:,0] = c[0] * viterbi[:,0] # apply the scaling factor
-    #     psi[0] = 0;
-
-    #     # C- Do the iterations for viterbi and psi for time>0 until T
-    #     for t in range(1,nSamples): # loop through time
-    #         for s in range (0,nStates): # loop through the states @(t-1)
-    #             trans_p = viterbi[:,t-1] * self.transition[:,s]
-    #             psi[s,t], viterbi[s,t] = max(enumerate(trans_p), key=operator.itemgetter(1))
-    #             viterbi[s,t] = viterbi[s,t]*self.emission[s,observations(t)]
-
-    #         c[t] = 1.0/np.sum(viterbi[:,t]) # scaling factor
-    #         viterbi[:,t] = c[t] * viterbi[:,t]
-
-    #     # D - Back-tracking
-    #     best_path[nSamples-1] =  viterbi[:,nSamples-1].argmax() # last state
-    #     for t in range(nSamples-1,0,-1): # states of (last-1)th to 0th time step
-    #         best_path[t-1] = psi[best_path[t],t]
-
-    #     return best_path
     
-
+    
 
 def main():
     # Create an instance
     model = hmm()
+    model.tagViterbi('test.txt')
 
-    model.exhaustive('big cats and dogs')
+    #model.exhaustive('big cats and dogs')
+
 
 
 if __name__ == '__main__':
