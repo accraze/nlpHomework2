@@ -2,7 +2,6 @@
 
 from numpy import zeros, float32
 import sys, hmmtrain
-import itertools
 
 class hmm:        
     def __init__(self):
@@ -25,6 +24,7 @@ class hmm:
         total = 0
         count = 0
         selected_states = []
+        sequence = []
         
         #load list... 17 HIDDEN STATES
         selected_states.append(self.states[2])
@@ -46,11 +46,19 @@ class hmm:
         selected_states.append(self.states[44])
         selected_states.append(self.states[45])
 
-       #  permutations = list(itertools.permutations(selected_states))
+        for word in sent:
+            #go thru each state
+            for i in range(len(selected_states)):
+                temp = self.priors.prob(selected_states[i]) * \
+                self.emissions[selected_states[i]].prob(word)
+                if temp > total:
+                    total = temp
+                    sequence.append(selected_states[i])
 
-       # for item in permutations:
-       #      for item in sent:
-       #          temp self.emissions[]
+        print sequence
+        print total
+
+
 
         # for item in sent:
         #     for state in selected_states:
@@ -124,6 +132,7 @@ class hmm:
             print line
             # decode the line using viterbi decoding
             best_sequence = self.decode(line)
+            print best_sequence
             count = 0
             for word in line :
                 word += ("/" + best_sequence[count])
@@ -147,9 +156,9 @@ class hmm:
 def main():
     # Create an instance
     model = hmm()
-    model.tagViterbi('test.txt')
+    #model.tagViterbi('test.txt')
 
-    #model.exhaustive('big cats and dogs')
+    model.exhaustive('You look around at professional ballplayers and nobody blinks an eye.')
 
 
 
