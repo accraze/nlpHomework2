@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from numpy import zeros, float32
+from pprint import pprint
 import sys, hmmtrain
 
 class hmm:        
@@ -83,14 +84,15 @@ class hmm:
 
         for t in range(T):
             symbol = symbols[t]
+            print "current symbol: " + symbol
             if t == 0:
-                for i in range(N):
+                for i in xrange(N):
                     state = self.states[i]
                     V[t, i] = self.priors.prob(state) * \
                               self.emissions[state].prob(symbol)
                     B[t, state] = None
             else:
-                for j in range(N):
+                for j in xrange(N):
                     sj = self.states[j]
                     best = None
                     for i in range(N):
@@ -105,7 +107,7 @@ class hmm:
         #print 'B', B
 
         best = None
-        for i in range(N):
+        for i in xrange(N):
             val = V[T-1, i]
             if not best or val > best[0]:
                 best = (val, self.states[i])
@@ -114,7 +116,7 @@ class hmm:
 
         current = best[1]
         sequence = [current]
-        for t in range(T-1, 0, -1):
+        for t in xrange(T-1, 0, -1):
             last = B[t, current]
             sequence.append(last)
             current = last
@@ -131,15 +133,23 @@ class hmm:
         for line in content:
             print line
             # decode the line using viterbi decoding
-            best_sequence = self.decode(line)
-            print best_sequence
-            count = 0
-            for word in line :
-                word += ("/" + best_sequence[count])
-                count += 1
+            tokens = line.split()
+            #print "Tokens equals: "
+            #pprint(tokens)
+            best_sequence = self.decode(tokens)
+            print "The best sequence is: "
+            print pprint(best_sequence)
+        
+        count = 0
+        for word in tokens:
+            word += "/"
+            #print word
+            word += best_sequence[count]
+            #print word
+            tagged_content.append(word)
+            count += 1
 
-        for line in content:
-            print line
+        print " " .join(tagged_content)
 
 
         
@@ -156,9 +166,9 @@ class hmm:
 def main():
     # Create an instance
     model = hmm()
-    #model.tagViterbi('test.txt')
+    model.tagViterbi('test.txt')
 
-    model.exhaustive('You look around at professional ballplayers and nobody blinks an eye.')
+    #model.exhaustive('You look around at professional ballplayers and nobody blinks an eye.')
 
 
 
