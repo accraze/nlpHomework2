@@ -2,7 +2,7 @@
 
 from numpy import zeros, float32
 from pprint import pprint
-import sys, hmmtrain
+import sys, hmmtrain, itertools
 
 class hmm:        
     def __init__(self):
@@ -13,19 +13,20 @@ class hmm:
         self.states = states
         self.symbols = symbols
     
-    ####
-    # ADD METHODS HERE
-    ####
-
+    #takes a sentence o and exhaustively computes the 
+    #most likely tag sequence. This method should compute 
+    #the probability,for each possible tag sequence.
+    #It should return the most likely tag
+    #sequence and its associated probability.
     def exhaustive(self, o):
         sent = []
         for word in o.split():
             sent.append(word)
         # print sent
         total = 0
-        count = 0
+        prevTotal = 0
+        bestTotal = 0
         selected_states = []
-        sequence = []
         
         #load list... 17 HIDDEN STATES
         selected_states.append(self.states[2])
@@ -47,34 +48,38 @@ class hmm:
         selected_states.append(self.states[44])
         selected_states.append(self.states[45])
 
-        for word in sent:
-            #go thru each state
-            for i in range(len(selected_states)):
-                temp = self.priors.prob(selected_states[i]) * \
-                self.emissions[selected_states[i]].prob(word)
-                if temp > total:
-                    total = temp
-                    sequence.append(selected_states[i])
+        sequence = []
+        
+        #go through each permutation
+        for p in list(itertools.permutations(selected_states)):
+            
+            prevTotal = total
+            
+            for word in sent:
+                #multiply the prior and the emission
+                temp = self.priors.prob(p[count]) * \
+                self.emissions[p[count]].prob(word)
+                sequence.append(p[count])
+                #multiply the current calculation against
+                #the rest of this permutation
+                total*= temp
+                count+= 1
 
-        print sequence
-        print total
+            #check to see if this is the most likely sequence
+            if total < prevTotal:
+                total = bestTotal
+                bestSequence = sequence
+
+            #output the most likely tag sequence
+            #and its probability
+            print "Most likely tag sequence: "
+            print bestSequence
+            print "Probability: "
+            print bestTotal
 
 
-
-        # for item in sent:
-        #     for state in selected_states:
-                
-        #         temp = self.emissions[state].prob(item) * self.priors.prob(state)
-    
-        #         if temp > total:
-        #             total = temp
-        #             mle.update({item:state})
-        #         count+=1
-        # count = 0
-        # total = 0
-        # print mle
-
-
+    # performs Viterbi decoding to find the
+    # most likely tag sequence for a given word sequence
     def decode(self, symbols):
         # VITERBI DECODING
         T = len(symbols)
@@ -82,9 +87,11 @@ class hmm:
         V = zeros((T, N), float32)
         B = {}
 
+
         for t in range(T):
             symbol = symbols[t]
-            print "current symbol: " + symbol
+            
+            #initialization step
             if t == 0:
                 for i in xrange(N):
                     state = self.states[i]
@@ -92,6 +99,7 @@ class hmm:
                               self.emissions[state].prob(symbol)
                     B[t, state] = None
             else:
+                #recursion step
                 for j in xrange(N):
                     sj = self.states[j]
                     best = None
@@ -100,11 +108,9 @@ class hmm:
                         va = V[t-1, i] * self.transitions[si].prob(sj)
                         if not best or va > best[0]:
                             best = (va, si)
+                    #termination steps
                     V[t, j] = best[0] * self.emissions[sj].prob(symbol)
                     B[t, sj] = best[1]
-
-        #print 'V', V
-        #print 'B', B
 
         best = None
         for i in xrange(N):
@@ -112,7 +118,6 @@ class hmm:
             if not best or val > best[0]:
                 best = (val, self.states[i])
 
-        #print 'best', best
 
         current = best[1]
         sequence = [current]
@@ -124,51 +129,53 @@ class hmm:
         sequence.reverse()
         return sequence
 
+    # takes a file with one (tokenized) sentence per line
+    # as input and tags the words in the sentence using 
+    # Viterbi decoding
     def tagViterbi(self, fname):
         content = []
         tagged_content = []
+        count = 0
+        
+        #read in file with one tokenized sentence per line
         with open(fname) as f:
             content = f.readlines()
 
+        # process each sentence/line
         for line in content:
-            print line
+
             # decode the line using viterbi decoding
             tokens = line.split()
-            #print "Tokens equals: "
-            #pprint(tokens)
             best_sequence = self.decode(tokens)
+            
             print "The best sequence is: "
             print pprint(best_sequence)
         
-        count = 0
-        for word in tokens:
-            word += "/"
-            #print word
-            word += best_sequence[count]
-            #print word
-            tagged_content.append(word)
-            count += 1
+            
+            # tag each word and store in tag list
+            for word in tokens:
+                
+                #add tag to token
+                word += "/"
+                word += best_sequence[count]
+                
+                #add newly tagged word to array
+                tagged_content.append(word)
+                count += 1
 
+        #convert list to string for printing display
         print " " .join(tagged_content)
 
-
-        
-
-
-            
-
-
-
-
-    
-    
 
 def main():
     # Create an instance
     model = hmm()
-    model.tagViterbi('test.txt')
-
+    
     #model.exhaustive('You look around at professional ballplayers and nobody blinks an eye.')
+
+    model.tagViterbi('sentences.txt')
+
+    
 
 
 
